@@ -58,6 +58,6 @@ curl -X POST \
 
 ## Notes
 
-- The installer/DMG files must already be live on `releases.whatpulse.org` before triggering; both jobs verify the downloads and fail otherwise.
+- Installers are referenced by **versioned archive URLs** (`releases.whatpulse.org/archives/<version>/...`), so recorded SHA256 hashes stay valid after later releases. The files must already be live before triggering; both jobs verify the downloads and fail otherwise.
 - The winget job carries over the existing manifest (installer switches, scope, etc.) and only updates the version, URL, and SHA256.
 - Both targets end in a pull request, so nothing ships without review: the Homebrew PR in the tap repo, the winget PR in microsoft/winget-pkgs.

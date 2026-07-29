@@ -83,7 +83,7 @@ jobs:
         shell: pwsh
         run: |
           $version = '${{ steps.version.outputs.version }}'
-          $url = "https://releases.whatpulse.org/latest/windows/whatpulse-win-$version.exe"
+          $url = "https://releases.whatpulse.org/archives/$version/windows/whatpulse-win-$version.exe"
           $response = Invoke-WebRequest -Uri $url -Method Head -UseBasicParsing
           if ($response.StatusCode -ne 200) {
             Write-Error "Installer not found at $url (HTTP $($response.StatusCode))"
@@ -101,7 +101,7 @@ jobs:
           WINGET_TOKEN: ${{ secrets.PACKAGES_PAT }}
         run: |
           $version = '${{ steps.version.outputs.version }}'
-          $url = "https://releases.whatpulse.org/latest/windows/whatpulse-win-$version.exe"
+          $url = "https://releases.whatpulse.org/archives/$version/windows/whatpulse-win-$version.exe"
           .\wingetcreate.exe update WhatPulse.WhatPulse `
             --version $version `
             --urls $url `
