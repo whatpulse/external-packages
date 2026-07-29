@@ -107,5 +107,6 @@ jobs:
           .\wingetcreate.exe update WhatPulse.WhatPulse `
             --version $version `
             --urls "$url|x86" `
+            --release-notes-url "https://whatpulse.org/releasenotes/$version" `
             --submit `
             --token $env:WINGET_TOKEN
