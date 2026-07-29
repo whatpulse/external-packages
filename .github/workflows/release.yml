@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     if: >-
       (github.event_name == 'workflow_dispatch' && inputs.update_homebrew) ||
-      (github.event_name == 'repository_dispatch' && github.event.client_payload.homebrew != false)
+      (github.event_name == 'repository_dispatch' && !github.event.client_payload.skip_homebrew)
     steps:
       - name: Resolve version
         id: version
@@ -60,7 +60,7 @@ jobs:
     runs-on: windows-latest
     if: >-
       (github.event_name == 'workflow_dispatch' && inputs.update_winget) ||
-      (github.event_name == 'repository_dispatch' && github.event.client_payload.winget != false)
+      (github.event_name == 'repository_dispatch' && !github.event.client_payload.skip_winget)
     steps:
       - name: Resolve version
         id: version

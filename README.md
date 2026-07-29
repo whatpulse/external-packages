@@ -37,9 +37,9 @@ Http::withToken(config('services.github.token'))
         'event_type' => 'new-release',
         'client_payload' => [
             'version' => $version, // e.g. '5.8.3'
-            // Optional: set to false to skip a target
-            // 'homebrew' => false,
-            // 'winget' => false,
+            // Optional: set to true to skip a target
+            // 'skip_homebrew' => true,
+            // 'skip_winget' => true,
         ],
     ]);
 ```
