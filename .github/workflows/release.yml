@@ -102,8 +102,10 @@ jobs:
         run: |
           $version = '${{ steps.version.outputs.version }}'
           $url = "https://releases.whatpulse.org/archives/$version/windows/whatpulse-win-$version.exe"
+          # "|x86" pins the URL to the manifest's existing x86 installer node;
+          # wingetcreate detects the binary as x64 and can't match it otherwise.
           .\wingetcreate.exe update WhatPulse.WhatPulse `
             --version $version `
-            --urls $url `
+            --urls "$url|x86" `
             --submit `
             --token $env:WINGET_TOKEN
