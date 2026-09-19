@@ -1,0 +1,59 @@
+name: winget
+
+on:
+  # Called by release.yml
+  workflow_call:
+    inputs:
+      version:
+        description: 'WhatPulse version (e.g., 5.8.3)'
+        required: true
+        type: string
+
+  # Run this target on its own from the GitHub UI
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'WhatPulse version (e.g., 5.8.3)'
+        required: true
+        type: string
+
+jobs:
+  winget:
+    name: Submit winget manifest update
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      - name: Verify installer is available
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:VERSION)) {
+            Write-Error 'Error: no version specified'
+            exit 1
+          }
+          $url = "https://releases.whatpulse.org/archives/$env:VERSION/windows/whatpulse-win-$env:VERSION.exe"
+          $response = Invoke-WebRequest -Uri $url -Method Head -UseBasicParsing
+          if ($response.StatusCode -ne 200) {
+            Write-Error "Installer not found at $url (HTTP $($response.StatusCode))"
+            exit 1
+          }
+          Write-Host "Installer found: $url"
+
+      - name: Install wingetcreate
+        shell: pwsh
+        run: Invoke-WebRequest -Uri https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+
+      - name: Update manifest and submit PR to microsoft/winget-pkgs
+        shell: pwsh
+        env:
+          WINGET_TOKEN: ${{ secrets.PACKAGES_PAT }}
+        run: |
+          $url = "https://releases.whatpulse.org/archives/$env:VERSION/windows/whatpulse-win-$env:VERSION.exe"
+          # "|x64" pins the URL to the manifest's x64 installer node
+          # (architecture corrected from x86 by maintainers in the 6.3.1 manifest).
+          .\wingetcreate.exe update WhatPulse.WhatPulse `
+            --version $env:VERSION `
+            --urls "$url|x64" `
+            --release-notes-url "https://whatpulse.org/releasenotes/$env:VERSION" `
+            --submit `
+            --token $env:WINGET_TOKEN

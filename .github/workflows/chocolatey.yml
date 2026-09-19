@@ -1,0 +1,109 @@
+name: Chocolatey
+
+on:
+  # Called by release.yml
+  workflow_call:
+    inputs:
+      version:
+        description: 'WhatPulse version (e.g., 5.8.3)'
+        required: true
+        type: string
+      publish:
+        description: 'Push the package to community.chocolatey.org'
+        required: false
+        type: boolean
+        default: true
+
+  # Run this target on its own from the GitHub UI
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'WhatPulse version (e.g., 5.8.3)'
+        required: true
+        type: string
+      publish:
+        description: 'Push the package to community.chocolatey.org (untick to only build and test-install)'
+        type: boolean
+        default: true
+
+jobs:
+  chocolatey:
+    name: Build and push Chocolatey package
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ inputs.version }}
+      PACKAGE_DIR: chocolatey/whatpulse
+      BUILD_DIR: ${{ github.workspace }}\build\chocolatey
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download installer and compute SHA256
+        id: installer
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:VERSION)) {
+            Write-Error 'Error: no version specified'
+            exit 1
+          }
+          $url = "https://releases.whatpulse.org/archives/$env:VERSION/windows/whatpulse-win-$env:VERSION.exe"
+          $file = Join-Path $env:RUNNER_TEMP "whatpulse-win-$env:VERSION.exe"
+          Write-Host "Downloading $url"
+          Invoke-WebRequest -Uri $url -OutFile $file -UseBasicParsing
+          $hash = (Get-FileHash -Path $file -Algorithm SHA256).Hash
+          Write-Host "SHA256: $hash"
+          "checksum=$hash" >> $env:GITHUB_OUTPUT
+
+      - name: Render package from template
+        shell: pwsh
+        env:
+          CHECKSUM: ${{ steps.installer.outputs.checksum }}
+        run: |
+          New-Item -ItemType Directory -Force -Path $env:BUILD_DIR | Out-Null
+          Copy-Item -Path "$env:PACKAGE_DIR\*" -Destination $env:BUILD_DIR -Recurse -Force
+          Get-ChildItem -Path $env:BUILD_DIR -Recurse -Include *.nuspec, *.ps1 | ForEach-Object {
+            (Get-Content -Raw $_.FullName) `
+              -replace '\{\{VERSION\}\}', $env:VERSION `
+              -replace '\{\{CHECKSUM\}\}', $env:CHECKSUM |
+              Set-Content -Path $_.FullName -NoNewline
+          }
+          Write-Host '--- whatpulse.nuspec ---'
+          Get-Content "$env:BUILD_DIR\whatpulse.nuspec"
+          Write-Host '--- chocolateyinstall.ps1 ---'
+          Get-Content "$env:BUILD_DIR\tools\chocolateyinstall.ps1"
+
+      - name: Pack
+        shell: pwsh
+        run: |
+          choco pack "$env:BUILD_DIR\whatpulse.nuspec" --outputdirectory $env:BUILD_DIR
+          Get-ChildItem $env:BUILD_DIR -Filter *.nupkg
+
+      - name: Upload .nupkg artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatpulse-chocolatey-${{ inputs.version }}
+          path: ${{ env.BUILD_DIR }}\*.nupkg
+          if-no-files-found: error
+
+      # Same checks Chocolatey's moderation verifier runs: install, then uninstall.
+      - name: Test install
+        shell: pwsh
+        run: choco install whatpulse --version $env:VERSION --source $env:BUILD_DIR --yes --no-progress
+
+      - name: Test uninstall
+        shell: pwsh
+        run: choco uninstall whatpulse --yes --no-progress
+
+      - name: Push to community.chocolatey.org
+        if: ${{ inputs.publish }}
+        shell: pwsh
+        env:
+          CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:CHOCOLATEY_API_KEY)) {
+            Write-Error 'CHOCOLATEY_API_KEY secret is not set'
+            exit 1
+          }
+          $nupkg = Get-ChildItem $env:BUILD_DIR -Filter *.nupkg | Select-Object -First 1
+          choco push $nupkg.FullName --source https://push.chocolatey.org/ --api-key $env:CHOCOLATEY_API_KEY
+          Write-Host "Pushed $($nupkg.Name). Moderation status: https://community.chocolatey.org/packages/whatpulse/$env:VERSION"

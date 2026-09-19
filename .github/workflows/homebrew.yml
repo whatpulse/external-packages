@@ -1,0 +1,37 @@
+name: Homebrew
+
+on:
+  # Called by release.yml
+  workflow_call:
+    inputs:
+      version:
+        description: 'WhatPulse version (e.g., 5.8.3)'
+        required: true
+        type: string
+
+  # Run this target on its own from the GitHub UI
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'WhatPulse version (e.g., 5.8.3)'
+        required: true
+        type: string
+
+jobs:
+  homebrew:
+    name: Trigger Homebrew cask update
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch update-cask workflow in whatpulse/homebrew-whatpulse
+        env:
+          GH_TOKEN: ${{ secrets.PACKAGES_PAT }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [ -z "$VERSION" ]; then
+            echo "Error: no version specified"
+            exit 1
+          fi
+          gh api repos/whatpulse/homebrew-whatpulse/dispatches \
+            -f event_type=update-cask \
+            -f "client_payload[version]=$VERSION"
+          echo "Dispatched update-cask for version $VERSION"

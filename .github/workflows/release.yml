@@ -1,5 +1,9 @@
 name: Update External Packages
 
+# Orchestrator: resolves the version once, then fans out to the per-target
+# workflows (homebrew.yml, winget.yml, chocolatey.yml). Each of those can also
+# be run on its own from the Actions tab.
+
 on:
   # Manual trigger from the GitHub UI
   workflow_dispatch:
@@ -16,18 +20,21 @@ on:
         description: 'Update the winget package'
         type: boolean
         default: true
+      update_chocolatey:
+        description: 'Update the Chocolatey package'
+        type: boolean
+        default: true
 
   # API trigger from the release pipeline (Laravel)
   repository_dispatch:
     types: [new-release]
 
 jobs:
-  homebrew:
-    name: Trigger Homebrew cask update
+  resolve:
+    name: Resolve version
     runs-on: ubuntu-latest
-    if: >-
-      (github.event_name == 'workflow_dispatch' && inputs.update_homebrew) ||
-      (github.event_name == 'repository_dispatch' && !github.event.client_payload.skip_homebrew)
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Resolve version
         id: version
@@ -45,68 +52,35 @@ jobs:
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Dispatch update-cask workflow in whatpulse/homebrew-whatpulse
-        env:
-          GH_TOKEN: ${{ secrets.PACKAGES_PAT }}
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          gh api repos/whatpulse/homebrew-whatpulse/dispatches \
-            -f event_type=update-cask \
-            -f "client_payload[version]=$VERSION"
-          echo "Dispatched update-cask for version $VERSION"
+  homebrew:
+    name: Homebrew
+    needs: resolve
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.update_homebrew) ||
+      (github.event_name == 'repository_dispatch' && !github.event.client_payload.skip_homebrew)
+    uses: ./.github/workflows/homebrew.yml
+    with:
+      version: ${{ needs.resolve.outputs.version }}
+    secrets: inherit
 
   winget:
-    name: Submit winget manifest update
-    runs-on: windows-latest
+    name: winget
+    needs: resolve
     if: >-
       (github.event_name == 'workflow_dispatch' && inputs.update_winget) ||
       (github.event_name == 'repository_dispatch' && !github.event.client_payload.skip_winget)
-    steps:
-      - name: Resolve version
-        id: version
-        shell: pwsh
-        run: |
-          if ('${{ github.event_name }}' -eq 'repository_dispatch') {
-            $version = '${{ github.event.client_payload.version }}'
-          } else {
-            $version = '${{ inputs.version }}'
-          }
+    uses: ./.github/workflows/winget.yml
+    with:
+      version: ${{ needs.resolve.outputs.version }}
+    secrets: inherit
 
-          if ([string]::IsNullOrWhiteSpace($version)) {
-            Write-Error 'Error: no version specified'
-            exit 1
-          }
-
-          "version=$version" >> $env:GITHUB_OUTPUT
-
-      - name: Verify installer is available
-        shell: pwsh
-        run: |
-          $version = '${{ steps.version.outputs.version }}'
-          $url = "https://releases.whatpulse.org/archives/$version/windows/whatpulse-win-$version.exe"
-          $response = Invoke-WebRequest -Uri $url -Method Head -UseBasicParsing
-          if ($response.StatusCode -ne 200) {
-            Write-Error "Installer not found at $url (HTTP $($response.StatusCode))"
-            exit 1
-          }
-          Write-Host "Installer found: $url"
-
-      - name: Install wingetcreate
-        shell: pwsh
-        run: Invoke-WebRequest -Uri https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
-
-      - name: Update manifest and submit PR to microsoft/winget-pkgs
-        shell: pwsh
-        env:
-          WINGET_TOKEN: ${{ secrets.PACKAGES_PAT }}
-        run: |
-          $version = '${{ steps.version.outputs.version }}'
-          $url = "https://releases.whatpulse.org/archives/$version/windows/whatpulse-win-$version.exe"
-          # "|x64" pins the URL to the manifest's x64 installer node
-          # (architecture corrected from x86 by maintainers in the 6.3.1 manifest).
-          .\wingetcreate.exe update WhatPulse.WhatPulse `
-            --version $version `
-            --urls "$url|x64" `
-            --release-notes-url "https://whatpulse.org/releasenotes/$version" `
-            --submit `
-            --token $env:WINGET_TOKEN
+  chocolatey:
+    name: Chocolatey
+    needs: resolve
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.update_chocolatey) ||
+      (github.event_name == 'repository_dispatch' && !github.event.client_payload.skip_chocolatey)
+    uses: ./.github/workflows/chocolatey.yml
+    with:
+      version: ${{ needs.resolve.outputs.version }}
+    secrets: inherit

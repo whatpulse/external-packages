@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- {{VERSION}} is replaced by the chocolatey workflow before `choco pack`. -->
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>whatpulse</id>
+    <version>{{VERSION}}</version>
+    <packageSourceUrl>https://github.com/whatpulse/external-packages/tree/main/chocolatey/whatpulse</packageSourceUrl>
+    <owners>WhatPulse</owners>
+    <title>WhatPulse</title>
+    <authors>WhatPulse</authors>
+    <projectUrl>https://whatpulse.org/</projectUrl>
+    <iconUrl>
+      https://cdn.jsdelivr.net/gh/whatpulse/external-packages@main/chocolatey/whatpulse/icon.png</iconUrl>
+    <copyright>WhatPulse</copyright>
+    <licenseUrl>https://whatpulse.org/terms</licenseUrl>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/whatpulse</projectSourceUrl>
+    <docsUrl>https://whatpulse.org/help/</docsUrl>
+    <bugTrackerUrl>https://whatpulse.org/help/</bugTrackerUrl>
+    <tags>whatpulse productivity statistics tracking keyboard mouse network usage</tags>
+    <summary>Analyze your productivity and activity using WhatPulse.</summary>
+    <description><![CDATA[
+WhatPulse measures your computer activity: keyboard and mouse usage, time spent in applications, network traffic, and uptime. It runs quietly in the background and turns that data into statistics you can explore locally or on [whatpulse.org](https://whatpulse.org/).
+
+## Notes
+
+- Installs machine-wide (`InstallForAllUsers=true`) into `%ProgramFiles%\WhatPulse`.
+- Npcap is installed alongside WhatPulse for network statistics (the installer's default).
+- Upgrades run the new installer over the existing installation; settings and local data are kept.
+- Uninstalling runs `WhatPulseMaintenanceTool.exe purge`, which removes the program directory.
+]]></description>
+    <releaseNotes>https://whatpulse.org/releasenotes/{{VERSION}}</releaseNotes>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
