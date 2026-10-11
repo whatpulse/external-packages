@@ -28,11 +28,13 @@ if (-not (Test-Path $maintenanceTool)) {
 
 # `purge` removes all components and the program directory. The maintenance
 # tool's control script shuts down a running WhatPulse.exe first.
+# --accept-messages answers the message boxes that would otherwise block a
+# headless uninstall forever.
 $uninstallArgs = @{
   packageName    = $packageName
   fileType       = 'exe'
   file           = $maintenanceTool
-  silentArgs     = '--confirm-command purge'
+  silentArgs     = '--accept-messages --confirm-command purge'
   validExitCodes = @(0)
 }
 

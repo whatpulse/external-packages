@@ -91,6 +91,7 @@ jobs:
         run: choco install whatpulse --version $env:VERSION --source $env:BUILD_DIR --yes --no-progress
 
       - name: Test uninstall
+        timeout-minutes: 10
         shell: pwsh
         run: choco uninstall whatpulse --yes --no-progress
 

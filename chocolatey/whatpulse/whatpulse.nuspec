@@ -9,8 +9,7 @@
     <title>WhatPulse</title>
     <authors>WhatPulse</authors>
     <projectUrl>https://whatpulse.org/</projectUrl>
-    <iconUrl>
-      https://cdn.jsdelivr.net/gh/whatpulse/external-packages@main/chocolatey/whatpulse/icon.png</iconUrl>
+    <iconUrl>https://cdn.jsdelivr.net/gh/whatpulse/external-packages@main/chocolatey/whatpulse/icon.png</iconUrl>
     <copyright>WhatPulse</copyright>
     <licenseUrl>https://whatpulse.org/terms</licenseUrl>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
