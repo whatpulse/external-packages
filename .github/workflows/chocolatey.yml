@@ -93,7 +93,33 @@ jobs:
       - name: Test uninstall
         timeout-minutes: 10
         shell: pwsh
-        run: choco uninstall whatpulse --yes --no-progress
+        run: |
+          $proc = Start-Process choco -ArgumentList 'uninstall whatpulse --yes --no-progress' -NoNewWindow -PassThru
+          $null = $proc.Handle
+          if ($proc.WaitForExit(180000)) {
+            exit $proc.ExitCode
+          }
+
+          # Hung: show what it is waiting on before the runner kills it.
+          Write-Host '::group::Processes'
+          Get-CimInstance Win32_Process |
+            Where-Object { $_.CommandLine -match 'WhatPulse|choco|npcap|cscript|wscript' -or $_.Name -match 'WhatPulse|Maintenance|npcap|Uninstall' } |
+            Select-Object ProcessId, ParentProcessId, Name, CreationDate, CommandLine | Format-List
+          Write-Host '::endgroup::'
+          Write-Host '::group::Open windows'
+          Get-Process | Where-Object MainWindowTitle | Select-Object Id, ProcessName, MainWindowTitle | Format-Table -AutoSize
+          Write-Host '::endgroup::'
+          Write-Host '::group::chocolatey.log (tail)'
+          Get-Content C:\ProgramData\chocolatey\logs\chocolatey.log -Tail 60
+          Write-Host '::endgroup::'
+          Write-Host '::group::Install directory'
+          Get-ChildItem "$env:ProgramFiles\WhatPulse" -ErrorAction SilentlyContinue | Select-Object Name, Length, LastWriteTime
+          Get-ChildItem "$env:ProgramFiles\WhatPulse" -Filter *.log -ErrorAction SilentlyContinue |
+            ForEach-Object { Write-Host "--- $($_.Name)"; Get-Content $_.FullName -Tail 40 }
+          Write-Host '::endgroup::'
+          Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+          Write-Error 'choco uninstall did not finish within 3 minutes'
+          exit 1
 
       - name: Push to community.chocolatey.org
         if: ${{ inputs.publish }}
