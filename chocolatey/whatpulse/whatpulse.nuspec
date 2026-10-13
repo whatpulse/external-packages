@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- {{VERSION}} is replaced by the chocolatey workflow before `choco pack`. -->
+<!-- {{VERSION}} and {{PACKAGE_VERSION}} are replaced by the chocolatey workflow before `choco pack`. -->
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>whatpulse</id>
-    <version>{{VERSION}}</version>
+    <version>{{PACKAGE_VERSION}}</version>
     <packageSourceUrl>https://github.com/whatpulse/external-packages/tree/main/chocolatey/whatpulse</packageSourceUrl>
     <owners>WhatPulse</owners>
     <title>WhatPulse</title>

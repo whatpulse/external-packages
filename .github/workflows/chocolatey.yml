@@ -8,6 +8,11 @@ on:
         description: 'WhatPulse version (e.g., 5.8.3)'
         required: true
         type: string
+      package_fix:
+        description: 'Package fix date (YYYYMMDD) when re-releasing the same WhatPulse version'
+        required: false
+        type: string
+        default: ''
       publish:
         description: 'Push the package to community.chocolatey.org'
         required: false
@@ -21,6 +26,11 @@ on:
         description: 'WhatPulse version (e.g., 5.8.3)'
         required: true
         type: string
+      package_fix:
+        description: 'Package fix date (YYYYMMDD), only when re-releasing the same WhatPulse version; gives e.g. 5.8.3.20261013'
+        required: false
+        type: string
+        default: ''
       publish:
         description: 'Push the package to community.chocolatey.org (untick to only build and test-install)'
         type: boolean
@@ -32,6 +42,8 @@ jobs:
     runs-on: windows-latest
     env:
       VERSION: ${{ inputs.version }}
+      # Chocolatey package fix version notation: <version>.<YYYYMMDD>
+      PACKAGE_VERSION: ${{ inputs.package_fix && format('{0}.{1}', inputs.version, inputs.package_fix) || inputs.version }}
       PACKAGE_DIR: chocolatey/whatpulse
       BUILD_DIR: ${{ github.workspace }}\build\chocolatey
     steps:
@@ -63,6 +75,7 @@ jobs:
           Copy-Item -Path "$env:PACKAGE_DIR\*" -Destination $env:BUILD_DIR -Recurse -Force
           Get-ChildItem -Path $env:BUILD_DIR -Recurse -Include *.nuspec, *.ps1 | ForEach-Object {
             (Get-Content -Raw $_.FullName) `
+              -replace '\{\{PACKAGE_VERSION\}\}', $env:PACKAGE_VERSION `
               -replace '\{\{VERSION\}\}', $env:VERSION `
               -replace '\{\{CHECKSUM\}\}', $env:CHECKSUM |
               Set-Content -Path $_.FullName -NoNewline
@@ -81,14 +94,14 @@ jobs:
       - name: Upload .nupkg artifact
         uses: actions/upload-artifact@v4
         with:
-          name: whatpulse-chocolatey-${{ inputs.version }}
+          name: whatpulse-chocolatey-${{ env.PACKAGE_VERSION }}
           path: ${{ env.BUILD_DIR }}\*.nupkg
           if-no-files-found: error
 
       # Same checks Chocolatey's moderation verifier runs: install, then uninstall.
       - name: Test install
         shell: pwsh
-        run: choco install whatpulse --version $env:VERSION --source $env:BUILD_DIR --yes --no-progress
+        run: choco install whatpulse --version $env:PACKAGE_VERSION --source $env:BUILD_DIR --yes --no-progress
 
       - name: Test uninstall
         timeout-minutes: 10
@@ -133,4 +146,4 @@ jobs:
           }
           $nupkg = Get-ChildItem $env:BUILD_DIR -Filter *.nupkg | Select-Object -First 1
           choco push $nupkg.FullName --source https://push.chocolatey.org/ --api-key $env:CHOCOLATEY_API_KEY
-          Write-Host "Pushed $($nupkg.Name). Moderation status: https://community.chocolatey.org/packages/whatpulse/$env:VERSION"
+          Write-Host "Pushed $($nupkg.Name). Moderation status: https://community.chocolatey.org/packages/whatpulse/$env:PACKAGE_VERSION"

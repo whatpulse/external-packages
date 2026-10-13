@@ -26,10 +26,20 @@ if (-not (Test-Path $maintenanceTool)) {
   return
 }
 
+# Stops a process and everything it started, deepest first. Deliberately a loop
+# rather than a function that calls itself: recursion stalls Chocolatey's
+# package validator.
 function Stop-ProcessTree([int]$ProcessId) {
-  Get-CimInstance Win32_Process -Filter "ParentProcessId = $ProcessId" |
-    ForEach-Object { Stop-ProcessTree $_.ProcessId }
-  Stop-Process -Id $ProcessId -Force -ErrorAction SilentlyContinue
+  $all  = @(Get-CimInstance Win32_Process)
+  $tree = @($ProcessId)
+  for ($i = 0; $i -lt $tree.Count; $i++) {
+    $parent = $tree[$i]
+    $tree += @($all |
+      Where-Object { $_.ParentProcessId -eq $parent -and $tree -notcontains [int]$_.ProcessId } |
+      ForEach-Object { [int]$_.ProcessId })
+  }
+  [array]::Reverse($tree)
+  $tree | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
 }
 
 function Get-ExitClientProcess {
