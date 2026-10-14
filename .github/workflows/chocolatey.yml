@@ -103,6 +103,23 @@ jobs:
         shell: pwsh
         run: choco install whatpulse --version $env:PACKAGE_VERSION --source $env:BUILD_DIR --yes --no-progress
 
+      # A forced reinstall runs chocolateyinstall.ps1 over an existing
+      # installation, the same as `choco upgrade` does. Start the client first
+      # so the purge has to shut a running WhatPulse down.
+      - name: Test upgrade over a running install
+        timeout-minutes: 10
+        shell: pwsh
+        run: |
+          Start-Process "$env:ProgramFiles\WhatPulse\WhatPulse.exe"
+          Start-Sleep -Seconds 15
+          Get-Process -Name WhatPulse | Select-Object Id, ProcessName, MainWindowTitle | Format-Table -AutoSize
+          choco install whatpulse --version $env:PACKAGE_VERSION --source $env:BUILD_DIR --force --yes --no-progress
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path "$env:ProgramFiles\WhatPulse\WhatPulse.exe")) {
+            Write-Error 'WhatPulse.exe missing after reinstall'
+            exit 1
+          }
+
       - name: Test uninstall
         timeout-minutes: 10
         shell: pwsh

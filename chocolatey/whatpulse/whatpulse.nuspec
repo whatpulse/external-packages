@@ -25,7 +25,7 @@ WhatPulse measures your computer activity: keyboard and mouse usage, time spent 
 
 - Installs machine-wide (`InstallForAllUsers=true`) into `%ProgramFiles%\WhatPulse`.
 - Npcap is installed alongside WhatPulse for network statistics (the installer's default).
-- Upgrades run the new installer over the existing installation; settings and local data are kept.
+- Upgrades remove the installed version (`WhatPulseMaintenanceTool.exe purge`) before running the new installer, which won't install over an existing installation.
 - Uninstalling runs `WhatPulseMaintenanceTool.exe purge`, which removes the program directory.
 ]]></description>
     <releaseNotes>https://whatpulse.org/releasenotes/{{VERSION}}</releaseNotes>
