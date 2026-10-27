@@ -10,10 +10,13 @@ function Get-WhatPulseMaintenanceTool {
     throw "$($keys.Count) matches found for 'WhatPulse*' ($names). Refusing to guess; uninstall manually."
   }
 
-  # The installer registers WhatPulseMaintenanceTool.exe as the UninstallString.
-  if ($keys.Count -eq 1) {
-    $maintenanceTool = $keys[0].UninstallString.Trim('"')
-    if (Test-Path $maintenanceTool) {
+  # The installer registers WhatPulseMaintenanceTool.exe as the UninstallString,
+  # quoted and possibly followed by arguments (e.g. `"C:\...\WhatPulseMaintenanceTool.exe" --start-uninstaller`).
+  # Take only the executable path: a leftover quote makes Test-Path throw
+  # "Illegal characters in path".
+  if ($keys.Count -eq 1 -and $keys[0].UninstallString -match '^\s*"?([^"]+?\.exe)') {
+    $maintenanceTool = $Matches[1]
+    if (Test-Path -LiteralPath $maintenanceTool) {
       return $maintenanceTool
     }
   }
