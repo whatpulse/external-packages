@@ -39,6 +39,18 @@ jobs:
           }
           Write-Host "Installer found: $url"
 
+      # wingetcreate submits from the token owner's winget-pkgs fork and fails
+      # when it can't sync it. Sync it up front. The token needs the `workflow`
+      # scope, or GitHub refuses syncs that pull in upstream workflow changes.
+      - name: Sync winget-pkgs fork
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.PACKAGES_PAT }}
+        run: |
+          $owner = gh api user -q .login
+          gh repo sync "$owner/winget-pkgs" --source microsoft/winget-pkgs --branch master
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Install wingetcreate
         shell: pwsh
         run: Invoke-WebRequest -Uri https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
